@@ -764,17 +764,17 @@
     var go = function () {
       var canvas = drawCard(), url;
       if (!canvas) return;
-      url = canvas.toDataURL("image/png");
+      url = canvas.toDataURL("image/jpeg", 0.93);
       $("#shareImg").src = url;
       $("#saveImg").href = url;
       $("#shareModal").hidden = false;
       $("#shareNow").hidden = !(navigator.canShare && window.File);
       $("#shareNow").onclick = function () {
         canvas.toBlob(function (blob) {
-          var file = new File([blob], "wealthlens.png", { type: "image/png" });
+          var file = new File([blob], "wealthlens.jpg", { type: "image/jpeg" });
           var data = { files: [file], text: t("cardFooter") + ": " + siteLink() };
           if (navigator.canShare && navigator.canShare(data)) navigator.share(data).catch(function () {});
-        });
+        }, "image/jpeg", 0.93);
       };
     };
     var fonts = document.fonts;
