@@ -917,7 +917,7 @@
     var tx = 64, maxT = (q ? qx - 40 : W - 64) - tx;
     x.fillStyle = white; x.font = "700 46px " + f;
     var cy = qy + 52;
-    wrapText(x, t("cardFooter") + " →", maxT).slice(0, 2).forEach(function (l) { x.fillText(l, tx, cy); cy += 58; });
+    wrapText(x, t("cardFooter") + "\u00A0→", maxT).slice(0, 2).forEach(function (l) { x.fillText(l, tx, cy); cy += 58; });
     x.fillStyle = gold; x.font = "700 38px " + f; x.fillText(fitText(x, C.siteUrl, maxT), tx, cy + 20);
     if (q) {
       x.fillStyle = "#FFFFFF"; roundRect(x, qx - 12, qy - 12, qs + 24, qs + 24, 26); x.fill();
