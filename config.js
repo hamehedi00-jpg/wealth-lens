@@ -23,7 +23,7 @@ window.CONFIG = {
   },
 
   // Your live site address (shown on the share image). Change after Vercel gives you the link.
-  siteUrl: "wealth-lens-nu.vercel.app",
+  siteUrl: "wealthlensbd.vercel.app",
 
 
 
