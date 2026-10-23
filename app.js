@@ -154,6 +154,11 @@
     }
     return paid;
   }
+  // "Example: Shanta ..." line shown under fund categories (the category comes first, the product is only an example)
+  function exNote(id, tag) {
+    if (!C.instruments[id] || C.instruments[id].kind !== "fund") return "";
+    return '<' + tag + ' class="ex">' + t("exLine", { name: t("ex_" + id) }) + '</' + tag + '>';
+  }
   // Yearly bank excise duty on the account balance
   function exciseFor(balance) {
     var fee = 0;
@@ -304,7 +309,7 @@
     var ins = C.instruments[id];
     if (ins.kind === "fund") return t("fundRange", { low: pct(ins.low), high: pct(ins.high) });
     var r = ins.kind === "sanchay" && amount > ins.tierLimit ? ins.rateHigh : ins.rate;
-    return t("fixedRate", { rate: pct(r) }) + (ins.kind === "sanchay" ? " · " + t("sanchayNote") : "");
+    return t(ins.shariah ? "fixedRateProv" : "fixedRate", { rate: pct(r) }) + (ins.kind === "sanchay" ? " · " + t("sanchayNote") : "");
   }
 
   // ---------- TAB: compare ----------
@@ -321,7 +326,7 @@
       '</div></div>' +
       (lump ? moneyField("cmpAmt", t("amountLump"), c.lump, [100000, 500000, 1000000, 2500000])
             : moneyField("cmpAmt", t("amountMonthly"), c.monthly, [1000, 3000, 5000, 10000, 25000])) +
-      rangeField("cmpYears", t("yearsLabel"), 1, 15, c.years, "yearsVal") +
+      rangeField("cmpYears", t("yearsLabel"), 1, 25, c.years, "yearsVal") +
       '<div class="field"><label for="cmpBracket">' + t("bracketLabel") + '</label><select id="cmpBracket">' +
       brackets.map(function (b, i) {
         var label = b[1];
@@ -411,7 +416,7 @@
         '<div class="fill" style="width:' + lowW.toFixed(2) + '%"></div>' +
         (r.fund ? '<div class="span" style="left:' + lowW.toFixed(2) + '%;width:' + (hiW - lowW).toFixed(2) + '%"></div>' : "") +
         '<div class="dep" style="left:' + depW.toFixed(2) + '%"></div></div>' +
-        '<div class="gainline num">' + t("profit") + ': ' + (r.fund ? tk(r.lo - paid) + ' – ' + tk(r.hi - paid) + ' · ' + t("estimate") : tk(r.lo - paid)) + '</div>' +
+        '<div class="gainline num">' + t("profit") + ': ' + (r.fund ? tk(r.lo - paid) + ' – ' + tk(r.hi - paid) + ' · ' + t("estimate") : tk(r.lo - paid)) + '</div>' + exNote(r.id, "div") +
         costsHtml(r) + tagsFor(r.id) + '</div>';
     }).join("") + '</div>';
   }
@@ -438,7 +443,7 @@
     var a = alt.lo - base.lo, b = alt.hi - base.lo;
     if (b <= 0) return "";
     return '<div class="upside glass"><p class="k">' + t("up_head") + '</p>' +
-      '<p class="name">' + t("name_" + altId) + '</p>' +
+      '<p class="name">' + t("name_" + altId) + '</p>' + exNote(altId, "p") +
       '<p class="num">' + t("up_line", { years: digits(c.years), val: easyRange(alt.lo, alt.hi), more: a > 0 ? easyRange(a, b) : easy(b), base: t("short_" + sug.id) }) + '</p>' +
       '<p class="help">' + t("up_caveat") + '</p>' +
       '<button type="button" class="btn ghost small" data-try-mod>' + t("up_btn") + '</button></div>';
@@ -471,10 +476,10 @@
     var best = d.rows.filter(function (r) { return r.id === sug.id; })[0];
     var bestFig = best ? (best.fund ? tk(best.lo) + ' – ' + tk(best.hi) : tk(best.lo)) : "";
     out.innerHTML =
-      '<div class="verdict"><p class="k">' + t("suggestHead") + '</p><p class="name">' + t("name_" + sug.id) + '</p>' +
+      '<div class="verdict"><p class="k">' + t("suggestHead") + '</p><p class="name">' + t("name_" + sug.id) + '</p>' + exNote(sug.id, "p") +
       (best ? '<p class="why">' + (c.early ? t("verdictFigEarly", { m: digits(d.e) }) : t("verdictFig", { years: digits(c.years) })) + '</p><p class="fig num">' + bestFig + '</p>' : "") +
       beatLine(d, best) +
-      '<p class="why">' + sug.text + '</p></div>' +
+      '<p class="why">' + sug.text + '</p><p class="why note">' + t("suggNote") + '</p></div>' +
       upsideCard(d, sug) +
       '<div class="results-head" style="margin-top:22px"><h2>' + head + '</h2><span class="sub">' + t("afterTax") + '</span></div>' +
       '<p class="paidline">' + t("deposited") + ': <strong class="num">' + tk(d.paid) + '</strong></p>' +
@@ -560,7 +565,7 @@
       return { id: id, l: l, m: m, fund: ins.kind === "fund" };
     });
     function cell(v, fund) {
-      if (!v) return '<span class="dash">—</span>';
+      if (!v) return '<span class="dash">' + t("notOffered") + '</span>';
       if (fund && Math.round(v[0]) !== Math.round(v[1])) return '<span class="v num">' + tk(roundUp(v[0])) + '</span><span class="sm num">– ' + tk(roundUp(v[1])) + '</span>';
       return '<span class="v num">' + tk(roundUp(v[0])) + '</span>';
     }
@@ -707,7 +712,7 @@
       var ins = C.instruments[id], g = t("gd_" + id);
       function fill(s) { return s.replace("{rate}", pct(ins.rate || 0)).replace("{low}", pct(ins.low || 0)).replace("{high}", pct(ins.high || 0)); }
       var past = ins.past ? '<dt>' + t("g_past") + '</dt><dd>' + fixDigits(ins.past[S.lang]) + '</dd>' : "";
-      return '<article class="gcard"><div class="gcard-head"><div><h3>' + t("name_" + id) + '</h3>' + tagsFor(id) + '</div>' +
+      return '<article class="gcard"><div class="gcard-head"><div><h3>' + t("name_" + id) + '</h3>' + exNote(id, "p") + tagsFor(id) + '</div>' +
         '<div class="gmeter">' + meter(NEEDLE[id]) + '<span>' + t("riskMeter") + '</span></div></div>' +
         '<dl class="gdl"><dt>' + t("g_return") + '</dt><dd>' + fill(g.ret) + '</dd>' + past +
         '<dt>' + t("g_tax") + '</dt><dd>' + g.tax + '</dd>' +
@@ -726,7 +731,7 @@
     { id: "emergency", fr: [0, 0.33, 0.67, 1], tab: "goal", pre: function () { S.goal.preset = "emergency"; var p = C.goals.emergency; if (p) { S.goal.target = p.amount; S.goal.years = p.years; } } },
     { id: "debt", fr: [1, 0.67, 0.33, 0] },
     { id: "saving", fr: [0, 0.33, 0.67, 1], tab: "compare", pre: function () { S.cmp.mode = "monthly"; } },
-    { id: "place", multi: true, none: 4, score: function (a) { var n = (a || []).filter(function (i) { return i !== 4; }).length; return n === 0 ? 0 : (n === 1 ? 0.25 : (n === 2 ? 0.6 : 1)); }, tab: "guide" },
+    { id: "place", multi: true, none: 4, score: function (a) { var n = (a || []).filter(function (i) { return i !== 4 && i !== 0; }).length; return n === 0 ? 0 : (n === 1 ? 0.25 : (n === 2 ? 0.6 : 1)); }, tab: "guide" },
     { id: "rebate", fr: [0, 0.33, 0.67, 1, 1], tab: "tax" },
     { id: "insurance", fr: [0, 0.5, 1] },
     { id: "goal", fr: null },
@@ -817,11 +822,43 @@
       });
     });
   }
+  // Order of advice, like an advisor would give it: fix the base first, then protect, then grow.
+  function ckPlanSteps() {
+    var A = S.ck.ans, n = function (v) { return typeof v === "number" ? v : 9; };
+    var spread = (A.place || []).filter(function (i) { return i !== 4 && i !== 0; }).length;
+    // Someone with no cushion and no saving cannot "build a fund" without saving first, so those two become one path: start saving, fund first.
+    var noCushion = n(A.emergency) < 2, noSaving = n(A.saving) < 2, both = noCushion && noSaving;
+    var list = [
+      [n(A.debt) === 3, "debt"], [both && n(A.saving) === 0, "saveStart"], [both && n(A.saving) === 1, "saveBoost"], [noCushion && !both, "emergency"], [noSaving && !both, "saving"], [n(A.debt) === 2, "debt"],
+      [n(A.insurance) < 2, "insurance"], [both, "saveGrow"], [n(A.rebate) <= 2, "rebate"], [n(A.plan) < 2, "plan"], [spread < 2, "place"]
+    ];
+    var out = [];
+    list.forEach(function (x) { if (x[0] && out.indexOf(x[1]) < 0 && out.length < 3) out.push(x[1]); });
+    return out;
+  }
+  // Buttons under each plan step: where each one opens, and how that tab is set up for the person
+  function ckPlanBtns(id) {
+    var base = ckStep(id) || {};
+    if (id === "saveStart" || id === "saveBoost") return ckPlanBtns("emergency");
+    if (id === "saveGrow") return ckPlanBtns("saving");
+    if (id === "emergency") return [{ tab: "goal", pre: base.pre }, { tab: "guide" }];
+    if (id === "saving") return [{ tab: "compare", pre: base.pre }];
+    if (id === "rebate") return [{ tab: "tax" }];
+    if (id === "plan") return [{ tab: "goal", pre: base.pre }];
+    if (id === "place") return [{ tab: "guide" }];
+    return [];
+  }
   function renderCheckupResult() {
     var k = S.ck, r = ckScore(), band = r.score < 40 ? "low" : (r.score < 70 ? "mid" : "high");
     var goalName = t("ckGoalName")[k.ans.goal], riskName = t("ckRiskName")[k.ans.risk], startName = t("ckStartName")[k.ans.start];
     var gapNames = r.gaps.map(function (g) { return t("ckGap_" + g.id)[0]; });
-    S.summary = t("ckSumLine", { score: digits(r.score), gaps: gapNames.length ? gapNames.join(t("ckSumSep")) : t("ckSumNoGaps"), goal: goalName, risk: riskName, start: startName });
+    var gapLines = r.gaps.map(function (g) { return "- " + t("ckGap_" + g.id)[0]; });
+    S.summary = t("ckMsgHello") + "\n\n" + t("ckMsgHead") + "\n" +
+      t("ckMsgScore") + ": " + digits(r.score) + "/100\n" +
+      t("ckMsgGoal") + ": " + goalName + "\n" +
+      t("ckMsgRisk") + ": " + t("ck_risk_o")[k.ans.risk] + "\n" +
+      t("ckMsgStart") + ": " + t("ck_start_o")[k.ans.start] +
+      (gapLines.length ? "\n\n" + t("ckMsgGaps") + ":\n" + gapLines.join("\n") : "");
     var circ = 2 * Math.PI * 52;
     var ring = '<div class="ck-ring" role="img" aria-label="' + digits(r.score) + ' ' + t("ckScoreOf") + '"><svg viewBox="0 0 120 120" aria-hidden="true">' +
       '<circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" cx="60" cy="60" r="52" transform="rotate(-90 60 60)" stroke-dasharray="' + (circ * r.score / 100).toFixed(1) + ' ' + circ.toFixed(1) + '"/></svg>' +
@@ -832,15 +869,26 @@
         (st.tab && d[2] ? '<button type="button" class="btn ghost small" data-ck-go="' + g.id + '">' + d[2] + '</button>' : "") + '</li>';
     }).join("") + '</ul>' : '<p class="note">' + t("ckNoGaps") + '</p>';
     var risk = CK_RISK[k.ans.risk] || "low";
+    var steps = ckPlanSteps(), whens = t("ckPlanWhen");
+    var planHtml = steps.length ? '<ol class="ck-steps">' + steps.map(function (id, i) {
+      var d = t("ckPlan_" + id), btns = ckPlanBtns(id), labels = t("ckPlanBtn_" + (id === "saveStart" || id === "saveBoost" ? "emergency" : id === "saveGrow" ? "saving" : id)) || [];
+      return '<li><span class="ck-n num" aria-hidden="true">' + digits(i + 1) + '</span><div><p class="ck-when">' + whens[i] + '</p><strong>' + d[0] + '</strong><p>' + d[1] + '</p>' +
+        (btns.length ? '<div class="ck-btns">' + btns.map(function (b, j) { return '<button type="button" class="btn ghost small" data-ck-plan="' + id + ':' + j + '">' + labels[j] + '</button>'; }).join("") + '</div>' : "") + '</div></li>';
+    }).join("") + '</ol>' : '<p>' + t("ckPlanDone") + '</p>';
     panel.innerHTML =
       '<div class="card ck-card ck-result"><div class="ck-score">' + ring + '<div><h2>' + t("ckBand_" + band) + '</h2><p class="sub">' + t("ckBandNote_" + band) + '</p></div></div>' +
-      '<h3 class="ck-h">' + t("ckGapsHead") + '</h3>' + gaps + '</div>' +
-      '<div class="card ck-card"><h3 class="ck-h">' + t("ckFitHead") + '</h3><p>' + t("ckFit_" + risk) + '</p>' +
+      '</div>' +
+      '<div class="card ck-card ck-plan"><h3 class="ck-h">' + t("ckPlanHead") + '</h3><p class="sub">' + t("ckPlanIntro_" + band) + '</p>' +
+      (steps.length ? '<p class="sub">' + t("ckPlanFor", { goal: goalName }) + '</p>' : "") + planHtml + '<p class="note">' + t("ckPlanNote") + '</p></div>' +
+      '<div class="card ck-card"><h3 class="ck-h">' + t("ckFitHead") + '</h3><p>' + t("ckFit_" + risk) + '</p><p class="note">' + t("builtBy") + '</p>' +
       '<div class="actions"><button type="button" class="btn ghost" data-ck-fit>' + t("ckFitBtn") + '</button></div></div>' +
       '<div class="card ck-card ck-talk"><h3 class="ck-h">' + t("ckTalkHead", { name: S.lang === "bn" ? C.advisor.nameBn : C.advisor.nameEn }) + '</h3><p>' + t("ckTalkSub") + '</p>' +
       '<div class="actions"><a class="btn primary" data-wa target="_blank" rel="noopener" href="' + waLink() + '">' + t("ckTalkBtn") + '</a>' +
       '<button type="button" class="btn ghost" data-ck-again>' + t("ckAgain") + '</button></div>' +
       '<p class="note">' + t("ckConsent") + '</p></div>';
+    $$("[data-ck-plan]", panel).forEach(function (b) {
+      b.addEventListener("click", function () { var p = b.getAttribute("data-ck-plan").split(":"), x = ckPlanBtns(p[0])[+p[1]]; if (x) ckGo(x.tab, x.pre); });
+    });
     $$("[data-ck-go]", panel).forEach(function (b) {
       b.addEventListener("click", function () { var st = ckStep(b.getAttribute("data-ck-go")); ckGo(st.tab, st.pre); });
     });
@@ -885,11 +933,13 @@
   // ---------- WhatsApp ----------
   function waLink(extra) {
     var msg = t("waHello");
-    if (S.summary) msg += "\n" + t("waAbout", { summary: S.summary });
+    // a summary with line breaks is a ready-made message (the check-up one) and already has its own greeting
+    if (S.summary && S.summary.indexOf("\n") >= 0) msg = S.summary;
+    else if (S.summary) msg += "\n" + t("waAbout", { summary: S.summary });
     if (extra) msg += "\n" + extra;
     return "https://wa.me/" + C.advisor.whatsapp + "?text=" + encodeURIComponent(msg);
   }
-  function updateFab() { $("#fab").href = waLink(); }
+  function updateFab() { var f = $("#fab"); f.href = waLink(); f.hidden = S.tab === "checkup" && S.ck.step >= 0 && S.ck.step < CK_STEPS.length; }
 
   // ---------- share card ----------
   // ---------- QR (WhatsApp) ----------
@@ -1052,22 +1102,43 @@
 
     var rows;
     if (lc.type === "compare") rows = lc.data.rows.slice(0, 5).map(function (r) { return { id: r.id, lo: r.lo, hi: r.hi, fund: r.fund }; });
-    else rows = lc.rows.filter(function (r) { return r.m; }).map(function (r) { return { id: r.id, lo: r.m[0], hi: r.m[1], fund: r.fund }; })
-      .sort(function (a, b) { return a.lo - b.lo; }).slice(0, 5);
-    var max = Math.max.apply(null, rows.map(function (r) { return Math.max(r.hi, r.lo); })) * 1.02;
-    var top = y + 30, bottom = py + ph - 40, step = Math.min(96, (bottom - top) / Math.max(rows.length, 1));
-    rows.forEach(function (r, i) {
-      var ry = top + step * i + 46;
-      x.fillStyle = gold; x.font = "700 32px " + f; x.fillText(digits(i + 1), px + 48, ry);
-      x.fillStyle = white; x.font = "600 32px " + f; x.fillText(t("short_" + r.id), px + 96, ry);
-      var lo = Math.min(r.lo, r.hi), hi = Math.max(r.lo, r.hi);
-      var val = r.fund && Math.round(lo) !== Math.round(hi) ? tk(roundUp(lo)) + " – " + tk(roundUp(hi)) : tk(roundUp(lo));
-      x.font = "700 34px " + f; x.textAlign = "right"; x.fillText(val, px + pw - 48, ry); x.textAlign = "left";
-      var by = ry + 18, bx = px + 96, bw = pw - 144;
-      x.fillStyle = track; roundRect(x, bx, by, bw, 9, 4.5); x.fill();
-      if (r.fund) { x.fillStyle = gold; roundRect(x, bx, by, hi / max * bw, 9, 4.5); x.fill(); }
-      x.fillStyle = fill; roundRect(x, bx, by, lo / max * bw, 9, 4.5); x.fill();
-    });
+    else rows = [];
+    // draws one numbered list of bars (name, amount, bar) starting at `top`; returns the next free y
+    function drawBars(list, top, step, size) {
+      var max = Math.max.apply(null, list.map(function (r) { return Math.max(r.hi, r.lo); })) * 1.02;
+      list.forEach(function (r, i) {
+        var ry = top + step * i + size * 1.3;
+        x.fillStyle = gold; x.font = "700 " + size + "px " + f; x.fillText(digits(i + 1), px + 48, ry);
+        x.fillStyle = white; x.font = "600 " + size + "px " + f; x.fillText(t("short_" + r.id), px + 96, ry);
+        var lo = Math.min(r.lo, r.hi), hi = Math.max(r.lo, r.hi);
+        var val = r.fund && Math.round(lo) !== Math.round(hi) ? tk(roundUp(lo)) + " – " + tk(roundUp(hi)) : tk(roundUp(lo));
+        x.font = "700 " + (size + 2) + "px " + f; x.textAlign = "right"; x.fillText(val, px + pw - 48, ry); x.textAlign = "left";
+        var by = ry + size * 0.55, bx = px + 96, bw = pw - 144;
+        x.fillStyle = track; roundRect(x, bx, by, bw, 9, 4.5); x.fill();
+        if (r.fund) { x.fillStyle = gold; roundRect(x, bx, by, hi / max * bw, 9, 4.5); x.fill(); }
+        x.fillStyle = fill; roundRect(x, bx, by, lo / max * bw, 9, 4.5); x.fill();
+      });
+      return top + step * list.length;
+    }
+    if (lc.type === "compare") {
+      var cr = lc.data.rows.slice(0, 5).map(function (r) { return { id: r.id, lo: r.lo, hi: r.hi, fund: r.fund }; });
+      var cTop = y + 30, cStep = Math.min(96, (py + ph - 40 - cTop) / Math.max(cr.length, 1));
+      drawBars(cr, cTop, cStep, 32);
+    } else {
+      // goal card: the one-time amounts and the monthly amounts, each as its own short list (cheapest first)
+      var pick = function (key) {
+        return lc.rows.filter(function (r) { return r[key]; }).map(function (r) { return { id: r.id, lo: r[key][0], hi: r[key][1], fund: r.fund }; })
+          .sort(function (a, b) { return a.lo - b.lo; }).slice(0, 4);
+      };
+      var groups = [[t("colToday"), pick("l")], [t("colMonthly"), pick("m")]].filter(function (g) { return g[1].length; });
+      var total = groups.reduce(function (s, g) { return s + g[1].length; }, 0);
+      var avail = py + ph - 30 - (y + 24) - groups.length * 52;
+      var gStep = Math.min(70, avail / Math.max(total, 1)), gy = y + 24;
+      groups.forEach(function (g) {
+        x.fillStyle = gold; x.font = "600 28px " + f; x.fillText(fitText(x, g[0], pw - 96), px + 48, gy + 30);
+        gy = drawBars(g[1], gy + 40, gStep, 27) + 12;
+      });
+    }
 
     // call to action + QR to the website
     var q = siteQr(), qs = 230, qx = W - 56 - qs, qy = py + ph + 44;
@@ -1081,8 +1152,9 @@
       drawQr(x, q, qx, qy, qs, "#111214", "#FFFFFF");
       x.fillStyle = soft; x.font = "500 22px " + f; x.fillText(fitText(x, t("cardScan"), maxT), tx, qy + qs - 4);
     }
-    x.fillStyle = "rgba(246,248,244,0.55)"; x.font = "400 20px " + f; x.textAlign = "center";
-    x.fillText(t("cardNote"), W / 2, H - 30); x.textAlign = "left";
+    x.fillStyle = "rgba(246,248,244,0.82)"; x.font = "500 25px " + f; x.textAlign = "center";
+    var noteLines = t("cardNote").split("\n");
+    noteLines.forEach(function (l, i) { x.fillText(l, W / 2, H - 28 - (noteLines.length - 1 - i) * 34); }); x.textAlign = "left";
     return cv;
   }
   function fitText(x, text, maxW) {

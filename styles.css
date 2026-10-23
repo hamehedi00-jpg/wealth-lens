@@ -202,7 +202,7 @@ select:focus, input[type="text"]:focus, input[type="tel"]:focus { outline: none;
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   border: 0; background: var(--glass-soft); box-shadow: inset 0 0 0 1px var(--hair); border-radius: 999px;
-  padding: 5px 13px; cursor: pointer; font-size: 14px; font-weight: 500;
+  padding: 5px 15px; min-height: 40px; display: inline-flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 500;
 }
 .chips .chip:hover { box-shadow: inset 0 0 0 1px var(--gold); }
 .chips .chip[aria-pressed="true"] { background: var(--emerald); color: var(--on-emerald); box-shadow: none; }
@@ -305,13 +305,13 @@ input[type="range"]::-moz-range-thumb { width: 26px; height: 26px; border: 0; bo
 /* ---------- Goal table ---------- */
 .table-scroll { overflow-x: auto; margin-top: 10px; }
 .gtable { width: 100%; border-collapse: collapse; font-size: 15px; }
-.gtable th { text-align: right; font-size: 12.5px; color: var(--muted); font-weight: 600; padding: 0 0 10px 10px; }
+.gtable th { text-align: right; font-size: 14px; color: var(--ink); font-weight: 700; padding: 0 0 12px 10px; line-height: 1.3; }
 .gtable th:first-child { text-align: left; padding-left: 0; }
 .gtable td { padding: 13px 0 13px 10px; border-top: 1px solid var(--hair); text-align: right; vertical-align: top; }
 .gtable td:first-child { text-align: left; padding-left: 0; font-weight: 700; }
 .gtable td .sm { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
 .gtable .v { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; white-space: nowrap; }
-.gtable .dash { color: var(--faint); }
+.gtable .dash { color: var(--faint); font-size: 12.5px; font-weight: 500; }
 
 /* ---------- Tax ---------- */
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -513,3 +513,27 @@ input[type="range"]::-moz-range-thumb { width: 26px; height: 26px; border: 0; bo
 .ck-card .ck-q { margin: 0 0 18px; }
 .ck-card .ck-hint { margin: -10px 0 16px; color: var(--muted); font-size: 14px; }
 .ck-card .actions { margin-top: 18px; }
+
+/* example line under fund categories */
+.ex { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.verdict .ex { color: rgba(246, 248, 244, 0.72); margin: 0; }
+
+/* Check-up plan */
+.ck-plan .sub { margin: 0 0 8px; color: var(--muted); font-size: 15px; }
+.ck-steps { list-style: none; margin: 14px 0 6px; padding: 0; display: grid; gap: 0; }
+.ck-steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 16px 0; border-top: 1px solid var(--hair); }
+.ck-steps li:first-child { border-top: 0; padding-top: 4px; }
+.ck-n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: var(--gold-ink); background: var(--gold-soft); }
+.ck-when { margin: 0 0 2px; font-size: 12.5px; font-weight: 600; color: var(--gold-ink); }
+.ck-steps strong { font-size: 16.5px; }
+.ck-steps p { margin: 4px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.55; }
+.ck-steps .when + strong { margin-top: 0; }
+.ck-steps .btn { margin-top: 10px; }
+.ck-plan .note { margin-top: 10px; }
+
+.ck-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ck-btns .btn { margin-top: 0; }
+
+/* tap targets: checkbox rows and the language button are at least 44px high */
+.check { min-height: 44px; align-items: center; }
+.lang { min-height: 44px; }
