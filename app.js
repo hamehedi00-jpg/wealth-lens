@@ -6,10 +6,11 @@
   var S = {
     lang: "bn",
     shariah: false,
-    tab: "compare",
+    tab: "checkup",
+    ck: { step: -1, ans: {} },
     cmp: { mode: "lump", lump: 500000, monthly: 5000, years: 5, bracket: 0.10, risk: "low", early: false, exitM: 12 },
     goal: { preset: "edu", target: 1000000, years: 10, inflate: false },
-    tax: { income: 900000, salaried: true, special: false, invested: 0 },
+    tax: { income: 900000, salaried: false, special: false, invested: 0 },
     biz: { amount: 2000000, months: 6, place: "current" },
     summary: ""
   };
@@ -19,7 +20,22 @@
   } catch (e) {}
   if (/[?&]lang=en/.test(location.search)) S.lang = "en";
   var h = (location.hash || "").replace("#", "");
-  if (["compare", "goal", "tax", "biz", "guide"].indexOf(h) >= 0) S.tab = h;
+  if (["checkup", "compare", "goal", "tax", "biz", "guide"].indexOf(h) >= 0) S.tab = h;
+
+  // ---------- IFA link: ?ifa=CODE shows that advisor and sends leads to them (list in ifas.js) ----------
+  var IFA_CODE = "";
+  (function () {
+    var m = /[?&]ifa=([A-Za-z0-9_-]{1,20})/.exec(location.search);
+    var list = window.IFAS || {};
+    if (m && list[m[1]]) {
+      IFA_CODE = m[1];
+      var f = list[m[1]], a = C.advisor;
+      ["nameBn", "nameEn", "titleBn", "titleEn", "companyBn", "companyEn", "whatsapp", "whatsappDisplay", "facebook", "photo"].forEach(function (k) {
+        if (f[k]) a[k] = f[k];
+      });
+      a.whatsappContact = f.whatsappContact || "";
+    }
+  })();
 
   // ---------- text helpers ----------
   // With English digits chosen, Bangla digits inside the wording are shown as English too
@@ -224,9 +240,17 @@
 
   function applyStatic() {
     document.documentElement.lang = S.lang;
+    var ck = S.tab === "checkup";
     document.title = t("pageTitle");
+    // each tab has its own hook line; the Compare tab keeps the original
+    function heroKey(kind, ckKey, base) { var k = kind + "_" + S.tab; return ck ? ckKey : (window.I18N[S.lang][k] ? k : base); }
+    $(".eyebrow-chip").setAttribute("data-i", heroKey("heroE", "ckHeroEyebrow", "heroEyebrow"));
+    $(".hero-sub").setAttribute("data-i", heroKey("heroS", "ckHeroSub", "heroSub"));
+    $(".shariah-bar").hidden = ck;
+    $("#lead").hidden = ck;
+    $(".advisor").hidden = ck;
     $$("[data-i]").forEach(function (el) { el.textContent = t(el.getAttribute("data-i")); });
-    $("#heroTitle").innerHTML = t("heroTitle");
+    $("#heroTitle").innerHTML = t(heroKey("heroT", "ckHeroTitle", "heroTitle"));
     $$("[data-i-aria]").forEach(function (el) { el.setAttribute("aria-label", t(el.getAttribute("data-i-aria"))); });
     $("#langBtn").textContent = t("langSwitch");
     var a = C.advisor;
@@ -236,10 +260,14 @@
     $("#advHelp").innerHTML = t("advHelp").map(function (h) { return "<li>" + esc(h) + "</li>"; }).join("");
     $("#advWa").href = a.whatsappContact || ("https://wa.me/" + a.whatsapp + "?text=" + encodeURIComponent(t("waHello")));
     if (a.facebook) { $("#advFb").href = a.facebook; $("#advFb").hidden = false; }
+    var ph = $(".adv-photo img");
+    if (ph && a.photo && ph.getAttribute("src") !== a.photo) ph.setAttribute("src", a.photo);
     paintQr($("#advQr"));
     var d = new Date(C.lastUpdated + "T00:00:00");
     var dateStr = d.toLocaleDateString(S.lang === "bn" ? "bn-BD" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
     $("#sourcesLine").textContent = t("sourcesLine", { date: fixDigits(dateStr) });
+    $("#sourcesLine").hidden = ck;
+    $(".foot").hidden = ck;
     $$(".tabs button").forEach(function (b) {
       var on = b.getAttribute("data-tab") === S.tab;
       b.setAttribute("aria-selected", on ? "true" : "false");
@@ -661,7 +689,7 @@
       '<line x1="46" y1="48" x2="' + nx.toFixed(1) + '" y2="' + ny.toFixed(1) + '" stroke="var(--ink)" stroke-width="3.5" stroke-linecap="round"/>' +
       '<circle cx="46" cy="48" r="4" fill="var(--ink)"/></svg>';
   }
-  // Side-by-side table (based on SAML's IFA orientation comparison)
+  // Side-by-side comparison table
   function compareTable() {
     var tb = t("cmpTable"), cols = S.shariah ? ["mtd", "mdps", "sasf"] : ["fdr", "sanchay", "tbond", "sfif", "sfiuf", "sasf"];
     var head = '<tr><th scope="col"></th>' + cols.map(function (c) { return '<th scope="col">' + (tb.names[c] || t("name_" + c)) + '</th>'; }).join("") + '</tr>';
@@ -691,6 +719,135 @@
     updateFab();
   }
 
+  // ---------- TAB: check-up ----------
+  // fr = score for each answer from 0 to 1, in the same order as the answers in i18n-checkup.js.
+  // tab = where the "open" button for that gap goes. pre = sets that tab up for the person.
+  var CK_STEPS = [
+    { id: "emergency", fr: [0, 0.33, 0.67, 1], tab: "goal", pre: function () { S.goal.preset = "emergency"; var p = C.goals.emergency; if (p) { S.goal.target = p.amount; S.goal.years = p.years; } } },
+    { id: "debt", fr: [1, 0.67, 0.33, 0] },
+    { id: "saving", fr: [0, 0.33, 0.67, 1], tab: "compare", pre: function () { S.cmp.mode = "monthly"; } },
+    { id: "place", multi: true, none: 4, score: function (a) { var n = (a || []).filter(function (i) { return i !== 4; }).length; return n === 0 ? 0 : (n === 1 ? 0.25 : (n === 2 ? 0.6 : 1)); }, tab: "guide" },
+    { id: "rebate", fr: [0, 0.33, 0.67, 1, 1], tab: "tax" },
+    { id: "insurance", fr: [0, 0.5, 1] },
+    { id: "goal", fr: null },
+    { id: "plan", fr: [0, 0.5, 1], tab: "goal", pre: function () {
+      var k = GOALS[S.ck.ans.goal] || "edu", p = C.goals[k];
+      S.goal.preset = k;
+      if (p) { S.goal.target = p.amount; S.goal.years = p.years; if (p.shariah) S.shariah = true; }
+    } },
+    { id: "risk", fr: null },
+    { id: "start", fr: null }
+  ];
+  var CK_RISK = ["low", "mod", "high"];
+  function ckStep(id) { return CK_STEPS.filter(function (x) { return x.id === id; })[0]; }
+  function ckScore() {
+    var sum = 0, n = 0, gaps = [];
+    CK_STEPS.forEach(function (st, i) {
+      if (!st.fr && !st.score) return;
+      var a = S.ck.ans[st.id], f = st.score ? st.score(a) : (st.fr[a] === undefined ? 0 : st.fr[a]);
+      sum += f; n++;
+      if (f < 1) gaps.push({ id: st.id, sev: 1 - f, i: i });
+    });
+    gaps.sort(function (a, b) { return b.sev - a.sev || a.i - b.i; });
+    return { score: Math.round(sum / n * 100), gaps: gaps.slice(0, 3) };
+  }
+  function ckGo(tab, pre) {
+    if (pre) pre();
+    S.tab = tab;
+    try { history.replaceState(null, "", "#" + tab); } catch (e) {}
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function ckKeepInView(el) {
+    if (!el) return;
+    var r = el.getBoundingClientRect();
+    if (r.top < 0 || r.top > window.innerHeight * 0.55) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+  function renderCheckup() {
+    var k = S.ck;
+    S.summary = ""; S.lastCard = null;
+    if (k.step < 0) {
+      panel.innerHTML = '<div class="card ck-card ck-start"><h2>' + t("ckStartTitle") + '</h2><p class="sub">' + t("ckStartSub") + '</p>' +
+        '<div class="actions"><button type="button" class="btn primary" data-ck-start>' + t("ckStartBtn") + '</button></div></div>';
+      $("[data-ck-start]", panel).addEventListener("click", function () { k.step = 0; renderCheckup(); ckKeepInView($(".ck-card", panel)); });
+    } else if (k.step < CK_STEPS.length) {
+      renderCheckupQuestion();
+    } else {
+      renderCheckupResult();
+    }
+    updateFab();
+  }
+  function renderCheckupQuestion() {
+    var k = S.ck, st = CK_STEPS[k.step], opts = t("ck_" + st.id + "_o"), cur = k.ans[st.id];
+    panel.innerHTML = '<div class="card ck-card">' +
+      '<div class="ck-top"><button type="button" class="ck-back' + (k.step === 0 ? " off" : "") + '" data-ck-back>' + t("ckBack") + '</button>' +
+      '<span class="ck-step num">' + t("ckStep", { n: digits(k.step + 1), total: digits(CK_STEPS.length) }) + '</span></div>' +
+      '<div class="ck-bar" aria-hidden="true"><i style="width:' + ((k.step + 1) / CK_STEPS.length * 100) + '%"></i></div>' +
+      '<h2 class="ck-q" tabindex="-1">' + t("ck_" + st.id + "_q") + '</h2>' +
+      (st.multi ? '<p class="ck-hint">' + t("ck_" + st.id + "_hint") + '</p>' : "") +
+      '<div class="ck-opts' + (st.id === "goal" ? " two" : "") + '" role="group">' +
+      opts.map(function (o, i) {
+        var on = st.multi ? (cur || []).indexOf(i) >= 0 : cur === i;
+        return '<button type="button" class="ck-opt" data-ck-opt="' + i + '" aria-pressed="' + on + '">' + esc(o) + '</button>';
+      }).join("") +
+      '</div>' + (st.multi ? '<div class="actions"><button type="button" class="btn primary" data-ck-next' + ((cur || []).length ? "" : " disabled") + '>' + t("ckNext") + '</button></div>' : "") + '</div>';
+    $("[data-ck-back]", panel).addEventListener("click", function () { if (k.step > 0) { k.step--; renderCheckup(); ckKeepInView($(".ck-card", panel)); } });
+    if (st.multi) {
+      var next = $("[data-ck-next]", panel);
+      var here = k.step;
+      function go() { if (S.tab !== "checkup" || k.step !== here || !(k.ans[st.id] || []).length) return; k.step++; renderCheckup(); ckKeepInView($(".ck-card", panel)); }
+      $$("[data-ck-opt]", panel).forEach(function (b) {
+        b.addEventListener("click", function () {
+          var i = +b.getAttribute("data-ck-opt"), a = (k.ans[st.id] || []).slice();
+          if (i === st.none) a = a.indexOf(i) >= 0 ? [] : [i];
+          else { a = a.filter(function (x) { return x !== st.none; }); var at = a.indexOf(i); if (at >= 0) a.splice(at, 1); else a.push(i); }
+          k.ans[st.id] = a;
+          $$("[data-ck-opt]", panel).forEach(function (x) { x.setAttribute("aria-pressed", a.indexOf(+x.getAttribute("data-ck-opt")) >= 0); });
+          next.disabled = !a.length;
+        });
+      });
+      next.addEventListener("click", function () { go(); });
+      return;
+    }
+    $$("[data-ck-opt]", panel).forEach(function (b) {
+      b.addEventListener("click", function () {
+        k.ans[st.id] = +b.getAttribute("data-ck-opt");
+        $$("[data-ck-opt]", panel).forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+        setTimeout(function () { if (S.tab !== "checkup") return; k.step++; renderCheckup(); ckKeepInView($(".ck-card", panel)); }, 160);
+      });
+    });
+  }
+  function renderCheckupResult() {
+    var k = S.ck, r = ckScore(), band = r.score < 40 ? "low" : (r.score < 70 ? "mid" : "high");
+    var goalName = t("ckGoalName")[k.ans.goal], riskName = t("ckRiskName")[k.ans.risk], startName = t("ckStartName")[k.ans.start];
+    var gapNames = r.gaps.map(function (g) { return t("ckGap_" + g.id)[0]; });
+    S.summary = t("ckSumLine", { score: digits(r.score), gaps: gapNames.length ? gapNames.join(t("ckSumSep")) : t("ckSumNoGaps"), goal: goalName, risk: riskName, start: startName });
+    var circ = 2 * Math.PI * 52;
+    var ring = '<div class="ck-ring" role="img" aria-label="' + digits(r.score) + ' ' + t("ckScoreOf") + '"><svg viewBox="0 0 120 120" aria-hidden="true">' +
+      '<circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" cx="60" cy="60" r="52" transform="rotate(-90 60 60)" stroke-dasharray="' + (circ * r.score / 100).toFixed(1) + ' ' + circ.toFixed(1) + '"/></svg>' +
+      '<div class="ck-ring-n"><span class="num">' + digits(r.score) + '</span><small>' + t("ckScoreOf") + '</small></div></div>';
+    var gaps = r.gaps.length ? '<ul class="ck-gaps">' + r.gaps.map(function (g) {
+      var d = t("ckGap_" + g.id), st = ckStep(g.id);
+      return '<li><div><strong>' + d[0] + '</strong><p>' + d[1] + '</p></div>' +
+        (st.tab && d[2] ? '<button type="button" class="btn ghost small" data-ck-go="' + g.id + '">' + d[2] + '</button>' : "") + '</li>';
+    }).join("") + '</ul>' : '<p class="note">' + t("ckNoGaps") + '</p>';
+    var risk = CK_RISK[k.ans.risk] || "low";
+    panel.innerHTML =
+      '<div class="card ck-card ck-result"><div class="ck-score">' + ring + '<div><h2>' + t("ckBand_" + band) + '</h2><p class="sub">' + t("ckBandNote_" + band) + '</p></div></div>' +
+      '<h3 class="ck-h">' + t("ckGapsHead") + '</h3>' + gaps + '</div>' +
+      '<div class="card ck-card"><h3 class="ck-h">' + t("ckFitHead") + '</h3><p>' + t("ckFit_" + risk) + '</p>' +
+      '<div class="actions"><button type="button" class="btn ghost" data-ck-fit>' + t("ckFitBtn") + '</button></div></div>' +
+      '<div class="card ck-card ck-talk"><h3 class="ck-h">' + t("ckTalkHead", { name: S.lang === "bn" ? C.advisor.nameBn : C.advisor.nameEn }) + '</h3><p>' + t("ckTalkSub") + '</p>' +
+      '<div class="actions"><a class="btn primary" data-wa target="_blank" rel="noopener" href="' + waLink() + '">' + t("ckTalkBtn") + '</a>' +
+      '<button type="button" class="btn ghost" data-ck-again>' + t("ckAgain") + '</button></div>' +
+      '<p class="note">' + t("ckConsent") + '</p></div>';
+    $$("[data-ck-go]", panel).forEach(function (b) {
+      b.addEventListener("click", function () { var st = ckStep(b.getAttribute("data-ck-go")); ckGo(st.tab, st.pre); });
+    });
+    $("[data-ck-fit]", panel).addEventListener("click", function () { ckGo("compare", function () { S.cmp.risk = risk; }); });
+    $("[data-ck-again]", panel).addEventListener("click", function () { k.step = -1; k.ans = {}; renderCheckup(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+  }
+
   // ---------- shared bindings ----------
   function bindMoney(id, cb) {
     var el = $("#" + id), w = $("#" + id + "-w");
@@ -714,8 +871,8 @@
 
   function render() {
     applyStatic();
-    panel.className = "panel " + (S.tab === "guide" ? "guide-tab" : "split");
-    ({ compare: renderCompare, goal: renderGoal, tax: renderTax, biz: renderBiz, guide: renderGuide })[S.tab]();
+    panel.className = "panel " + (S.tab === "guide" ? "guide-tab" : (S.tab === "checkup" ? "ck" : "split"));
+    ({ checkup: renderCheckup, compare: renderCompare, goal: renderGoal, tax: renderTax, biz: renderBiz, guide: renderGuide })[S.tab]();
     movePill();
   }
   function movePill() {
@@ -833,7 +990,7 @@
     if (line) lines.push(line);
     return lines;
   }
-  function siteLink() { return "https://" + C.siteUrl + "/?utm_source=sharecard&utm_medium=social"; }
+  function siteLink() { return "https://" + C.siteUrl + "/?" + (IFA_CODE ? "ifa=" + IFA_CODE + "&" : "") + "utm_source=sharecard&utm_medium=social"; }
   function siteQr() {
     if (typeof window.qrcode !== "function") return null;
     try { var q = window.qrcode(0, "M"); q.addData(siteLink()); q.make(); return q; } catch (e) { return null; }

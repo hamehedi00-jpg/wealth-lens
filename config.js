@@ -51,7 +51,7 @@ window.CONFIG = {
     incomeYearBn: "২০২৬-২৭ আয়বর্ষ (জুলাই ২০২৬ – জুন ২০২৭)",
     incomeYearEn: "Income year 2026-27 (July 2026 – June 2027)",
     thresholdGeneral: 400000,
-    thresholdWomenSenior: 425000,      // women & 65+ — verify with your tax adviser
+    thresholdWomenSenior: 450000,      // women & 65+ (PwC Finance Act 2026 summary: Tk 4.5 lakh)
     slabs: [                            // [width of slab, rate]
       [300000, 0.10],
       [400000, 0.15],
@@ -61,7 +61,7 @@ window.CONFIG = {
     ],
     minTax: 5000,
     rebate: { incomePct: 0.03, investPct: 0.10, cap: 750000 },
-    salaryExclusion: { fraction: 1 / 3, cap: 500000 },
+    salaryExclusion: { fraction: 1 / 3, cap: 450000 },  // cap Tk 4.5 lakh as published for ITA 2023; re-verify for 2026-27
     interestTDS: 0.10,                  // tax cut at source on bank / Sanchaypatra profit
     fundGainTax: 0.045                  // max effective tax on fund return (15% on up to 30% paid as dividend)
   },
@@ -96,19 +96,19 @@ window.CONFIG = {
     sfif: {
       rebateCeiling: 7500000,   // yearly investment that counts for the tax rebate
       kind: "fund", modes: ["lump", "monthly"], shariah: false, risk: 1, rebate: true,
-      low: 10.0, high: 12.0,  // SAML IFA orientation (Oct 2026): expected 10%–12% a year
+      low: 10.0, high: 12.0,  // expected 10%–12% a year
       past: { bn: "বছরের রিটার্ন: ২০২৪-এ ১০.১%, ২০২৫-এ ১৩.৩%, ২০২৬-এর প্রথম ৯ মাসে ১৩.৭%", en: "Yearly return: 10.1% in 2024, 13.3% in 2025, 13.7% in the first 9 months of 2026" }
     },
     sfiuf: {
       rebateCeiling: 7500000,   // yearly investment that counts for the tax rebate
       kind: "fund", modes: ["lump", "monthly"], shariah: false, risk: 2, rebate: true,
-      low: 12.0, high: 15.0,  // SAML IFA orientation: expected 12%–15% over the long term
+      low: 12.0, high: 15.0,  // expected 12%–15% over the long term
       past: { bn: "শুরু (২০১৮) থেকে মোট ৭৩.২%, একই সময়ে DSEX −৪.৮%; গত ২ বছরে ১৬.৩% (৩০ সেপ্টেম্বর ২০২৬ পর্যন্ত)", en: "73.2% in total since launch (2018) while DSEX fell 4.8%; 16.3% over the last 2 years (to 30 Sep 2026)" }
     },
     sasf: {
       rebateCeiling: 7500000,   // yearly investment that counts for the tax rebate
       kind: "fund", modes: ["lump", "monthly"], shariah: true, risk: 2, rebate: true,
-      low: 10.0, high: 12.0,  // SAML IFA orientation: expected 10%–12% over the long term
+      low: 10.0, high: 12.0,  // expected 10%–12% over the long term
       past: { bn: "শুরু (২০১৯) থেকে মোট ৪১.৫%, একই সময়ে বাজার −১৬.৪%; গত ২ বছরে ৯.৭% (৩০ সেপ্টেম্বর ২০২৬ পর্যন্ত)", en: "41.5% in total since launch (2019) while the market fell 16.4%; 9.7% over the last 2 years (to 30 Sep 2026)" }
     },
     mtd: {
